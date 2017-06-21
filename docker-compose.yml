@@ -1,0 +1,46 @@
+version: '2'
+services:
+  nginx-proxy:
+    image: jwilder/nginx-proxy
+    container_name: nginx-proxy
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - /etc/nginx/vhost.d
+      - /usr/share/nginx/html
+      - /apps/web/ssl:/etc/nginx/certs:ro
+  ssl-companion:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    container_name: ssl-companion
+    volumes:
+      - /apps/web/ssl:/etc/nginx/certs:rw
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    volumes_from:
+      - nginx-proxy
+    depends_on:
+      - nginx-proxy
+  mariadb:
+    image: 'bitnami/mariadb:latest'
+    environment:
+      - MARIADB_ROOT_USER=YOUR_ROOT_USER
+      - MARIADB_ROOT_PASSWORD=YOUR_PASSWORD
+      - MARIADB_DATABASE=ghost
+    volumes:
+      - ./ghost_data/db_data:/bitnami/mariadb
+  ghost:
+    image: bitnami/ghost:latest
+    depends_on:
+      - mariadb
+    ports:
+      - 2368
+    volumes:
+      - ./ghost_data/content_data:/bitnami/ghost
+    environment:
+      - VIRTUAL_HOST=blog.your_domain.fr
+      - LETSENCRYPT_HOST=blog.your_domain.fr
+      - LETSENCRYPT_EMAIL=contact@domain.fr
+      - GHOST_HOST=blog.your_domain.fr
+      - MARIADB_USER=YOUR_ROOT_USER
+      - MARIADB_PASSWORD=YOUR_PASSWORD
